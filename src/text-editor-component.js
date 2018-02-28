@@ -3037,7 +3037,7 @@ class DummyScrollbarComponent {
       outerStyle.overflowX = forceScrollbarVisible ? 'scroll' : 'auto'
       outerStyle.cursor = 'default'
       innerStyle.height = '15px'
-      innerStyle.width = (scrollWidth || 0) + 'px'
+      innerStyle.width = ceilToPhysicalPixelBoundary(scrollWidth || 0) + 'px'
     } else {
       let bottom = (horizontalScrollbarHeight || 0)
       outerStyle.right = 0
@@ -3048,7 +3048,7 @@ class DummyScrollbarComponent {
       outerStyle.overflowY = forceScrollbarVisible ? 'scroll' : 'auto'
       outerStyle.cursor = 'default'
       innerStyle.width = '15px'
-      innerStyle.height = (scrollHeight || 0) + 'px'
+      innerStyle.height = ceilToPhysicalPixelBoundary(scrollHeight || 0) + 'px'
     }
 
     return $.div(
