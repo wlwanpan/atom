@@ -32,6 +32,8 @@ class AtomWindow extends EventEmitter {
 
     const options = {
       show: false,
+      frame: false,
+      transparent: true,
       title: 'Atom',
       tabbingIdentifier: 'atom',
       webPreferences: {

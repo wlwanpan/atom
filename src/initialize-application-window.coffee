@@ -9,7 +9,6 @@ CompileCache = require './compile-cache'
 ModuleCache = require './module-cache'
 
 if global.isGeneratingSnapshot
-  require('about')
   require('archive-view')
   require('autocomplete-atom-api')
   require('autocomplete-css')
@@ -18,12 +17,7 @@ if global.isGeneratingSnapshot
   require('autocomplete-snippets')
   require('autoflow')
   require('autosave')
-  require('background-tips')
-  require('bookmarks')
   require('bracket-matcher')
-  require('command-palette')
-  require('deprecation-cop')
-  require('dev-live-reload')
   require('encoding-selector')
   require('exception-reporting')
   require('dalek')
@@ -31,13 +25,8 @@ if global.isGeneratingSnapshot
   require('fuzzy-finder')
   require('github')
   require('git-diff')
-  require('go-to-line')
-  require('grammar-selector')
-  require('image-view')
-  require('incompatible-packages')
   require('keybinding-resolver')
   require('line-ending-selector')
-  require('link')
   require('markdown-preview')
   require('metrics')
   require('notifications')
@@ -53,9 +42,7 @@ if global.isGeneratingSnapshot
   require('timecop')
   require('tree-view')
   require('update-package-dependencies')
-  require('welcome')
   require('whitespace')
-  require('wrap-guide')
 
 clipboard = new Clipboard
 TextEditor.setClipboard(clipboard)
