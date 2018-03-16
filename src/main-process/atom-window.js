@@ -22,6 +22,7 @@ class AtomWindow extends EventEmitter {
     this.safeMode = settings.safeMode
     this.devMode = settings.devMode
     this.resourcePath = settings.resourcePath
+    this.projectSpecification = settings.projectSpecification
 
     let {pathToOpen, locationsToOpen} = settings
     if (!locationsToOpen && pathToOpen) locationsToOpen = [{pathToOpen}]
@@ -61,9 +62,9 @@ class AtomWindow extends EventEmitter {
       get: () => JSON.stringify(Object.assign({
         userSettings: !this.isSpec
           ? this.atomApplication.configFile.get()
-          : null
-      }, this.loadSettings)),
-      configurable: true
+          : null,
+        projectSpecification: this.projectSpecification
+      }, this.loadSettings))
     })
 
     this.handleEvents()
