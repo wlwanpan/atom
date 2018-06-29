@@ -139,7 +139,7 @@ class AtomApplication extends EventEmitter {
   // for testing purposes without booting up the world. As you add tests, feel free to move instantiation
   // of these various sub-objects into the constructor, but you'll need to remove the side-effects they
   // perform during their construction, adding an initialize method that you call here.
-  initialize (options) {
+  async initialize (options) {
     global.atomApplication = this
 
     // DEPRECATED: This can be removed at some point (added in 1.13)
@@ -149,14 +149,15 @@ class AtomApplication extends EventEmitter {
       this.config.set('core.titleBar', 'custom')
     }
 
-    process.nextTick(() => this.autoUpdateManager.initialize())
     this.applicationMenu = new ApplicationMenu(this.version, this.autoUpdateManager)
     this.atomProtocolHandler = new AtomProtocolHandler(this.resourcePath, this.safeMode)
 
     this.listenForArgumentsFromNewProcess()
     this.setupDockMenu()
 
-    return this.launch(options)
+    const result = await this.launch(options)
+    this.autoUpdateManager.initialize()
+    return result
   }
 
   async destroy () {
@@ -172,7 +173,8 @@ class AtomApplication extends EventEmitter {
     if (!this.configFilePromise) {
       this.configFilePromise = this.configFile.watch()
       this.disposable.add(await this.configFilePromise)
-      this.config.onDidChange('core.titleBar', this.promptForRestart.bind(this))
+      this.config.onDidChange('core.titleBar', () => this.promptForRestart())
+      this.config.onDidChange('core.colorProfile', () => this.promptForRestart())
     }
 
     const optionsForWindowsToOpen = []
@@ -204,7 +206,6 @@ class AtomApplication extends EventEmitter {
 
   openWithOptions (options) {
     const {
-      projectSpecification,
       initialPaths,
       pathsToOpen,
       executedFrom,
@@ -259,7 +260,6 @@ class AtomApplication extends EventEmitter {
         profileStartup,
         clearWindowState,
         addToLastWindow,
-        projectSpecification,
         env
       })
     } else if (urlsToOpen.length > 0) {
@@ -439,7 +439,11 @@ class AtomApplication extends EventEmitter {
         event.preventDefault()
         const windowUnloadPromises = this.getAllWindows().map(window => window.prepareToUnload())
         const windowUnloadedResults = await Promise.all(windowUnloadPromises)
-        if (windowUnloadedResults.every(Boolean)) app.quit()
+        if (windowUnloadedResults.every(Boolean)) {
+          app.quit()
+        } else {
+          this.quitting = false
+        }
       }
 
       resolveBeforeQuitPromise()
@@ -563,9 +567,11 @@ class AtomApplication extends EventEmitter {
       window.setPosition(x, y)
     }))
 
-    this.disposable.add(ipcHelpers.respondTo('set-user-settings', (window, settings, filePath) =>
-      ConfigFile.at(filePath || this.configFilePath).update(JSON.parse(settings))
-    ))
+    this.disposable.add(ipcHelpers.respondTo('set-user-settings', (window, settings, filePath) => {
+      if (!this.quitting) {
+        ConfigFile.at(filePath || this.configFilePath).update(JSON.parse(settings))
+      }
+    }))
 
     this.disposable.add(ipcHelpers.respondTo('center-window', window => window.center()))
     this.disposable.add(ipcHelpers.respondTo('focus-window', window => window.focus()))
@@ -823,7 +829,6 @@ class AtomApplication extends EventEmitter {
     window,
     clearWindowState,
     addToLastWindow,
-    projectSpecification,
     env
   } = {}) {
     if (!pathsToOpen || pathsToOpen.length === 0) return
@@ -857,7 +862,7 @@ class AtomApplication extends EventEmitter {
     }
 
     let openedWindow
-    if (existingWindow && (projectSpecification == null || projectSpecification.config == null)) {
+    if (existingWindow) {
       openedWindow = existingWindow
       openedWindow.openLocations(locationsToOpen)
       if (openedWindow.isMinimized()) {
@@ -893,7 +898,6 @@ class AtomApplication extends EventEmitter {
         windowDimensions,
         profileStartup,
         clearWindowState,
-        projectSpecification,
         env
       })
       this.addWindow(openedWindow)

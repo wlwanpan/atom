@@ -497,14 +497,22 @@ module.exports = class Workspace extends Model {
       if (item instanceof TextEditor) {
         const subscriptions = new CompositeDisposable(
           this.textEditorRegistry.add(item),
-          this.textEditorRegistry.maintainConfig(item),
-          item.observeGrammar(this.handleGrammarUsed.bind(this))
+          this.textEditorRegistry.maintainConfig(item)
         )
         if (!this.project.findBufferForId(item.buffer.id)) {
           this.project.addBuffer(item.buffer)
         }
         item.onDidDestroy(() => { subscriptions.dispose() })
         this.emitter.emit('did-add-text-editor', {textEditor: item, pane, index})
+        // It's important to call handleGrammarUsed after emitting the did-add event:
+        // if we activate a package between adding the editor to the registry and emitting
+        // the package may receive the editor twice from `observeTextEditors`.
+        // (Note that the item can be destroyed by an `observeTextEditors` handler.)
+        if (!item.isDestroyed()) {
+          subscriptions.add(
+            item.observeGrammar(this.handleGrammarUsed.bind(this))
+          )
+        }
       }
     })
   }
@@ -1236,42 +1244,32 @@ module.exports = class Workspace extends Model {
 
     const fileSize = fs.getSizeSync(filePath)
 
-    let [resolveConfirmFileOpenPromise, rejectConfirmFileOpenPromise] = []
-    const confirmFileOpenPromise = new Promise((resolve, reject) => {
-      resolveConfirmFileOpenPromise = resolve
-      rejectConfirmFileOpenPromise = reject
-    })
-
     if (fileSize >= (this.config.get('core.warnOnLargeFileLimit') * 1048576)) { // 40MB by default
-      this.applicationDelegate.confirm({
-        message: 'Atom will be unresponsive during the loading of very large files.',
-        detail: 'Do you still want to load this file?',
-        buttons: ['Proceed', 'Cancel']
-      }, response => {
-        if (response === 1) {
-          rejectConfirmFileOpenPromise()
-        } else {
-          resolveConfirmFileOpenPromise()
-        }
+      await new Promise((resolve, reject) => {
+        this.applicationDelegate.confirm({
+          message: 'Atom will be unresponsive during the loading of very large files.',
+          detail: 'Do you still want to load this file?',
+          buttons: ['Proceed', 'Cancel']
+        }, response => {
+          if (response === 1) {
+            const error = new Error()
+            error.code = 'CANCELLED'
+            reject(error)
+          } else {
+            resolve()
+          }
+        })
       })
-    } else {
-      resolveConfirmFileOpenPromise()
     }
 
-    try {
-      await confirmFileOpenPromise
-      const buffer = await this.project.bufferForPath(filePath, options)
-      return this.textEditorRegistry.build(Object.assign({buffer, autoHeight: false}, options))
-    } catch (e) {
-      const error = new Error()
-      error.code = 'CANCELLED'
-      throw error
-    }
+    const buffer = await this.project.bufferForPath(filePath, options)
+    return this.textEditorRegistry.build(Object.assign({buffer, autoHeight: false}, options))
   }
 
   handleGrammarUsed (grammar) {
     if (grammar == null) { return }
-    return this.packageManager.triggerActivationHook(`${grammar.packageName}:grammar-used`)
+    this.packageManager.triggerActivationHook(`${grammar.scopeName}:root-scope-used`)
+    this.packageManager.triggerActivationHook(`${grammar.packageName}:grammar-used`)
   }
 
   // Public: Returns a {Boolean} that is `true` if `object` is a `TextEditor`.
