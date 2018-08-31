@@ -4,7 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const temp = require('temp').track()
 const dedent = require('dedent')
-const clipboard = require('../src/safe-clipboard')
+const {clipboard} = require('electron')
 const TextEditor = require('../src/text-editor')
 const TextBuffer = require('text-buffer')
 const TextMateLanguageMode = require('../src/text-mate-language-mode')
@@ -6716,6 +6716,20 @@ describe('TextEditor', () => {
         const gutter = editor.addGutter(options)
         expect(editor.getGutters().length).toBe(2)
         expect(editor.getGutters()[1]).toBe(gutter)
+        expect(gutter.type).toBe('decorated')
+      })
+
+      it('can add a custom line-number gutter', () => {
+        expect(editor.getGutters().length).toBe(1)
+        const options = {
+          name: 'another-gutter',
+          priority: 2,
+          type: 'line-number'
+        }
+        const gutter = editor.addGutter(options)
+        expect(editor.getGutters().length).toBe(2)
+        expect(editor.getGutters()[1]).toBe(gutter)
+        expect(gutter.type).toBe('line-number')
       })
 
       it("does not allow a custom gutter with the 'line-number' name.", () => expect(editor.addGutter.bind(editor, {name: 'line-number'})).toThrow())

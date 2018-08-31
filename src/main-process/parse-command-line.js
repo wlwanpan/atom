@@ -3,8 +3,6 @@
 const dedent = require('dedent')
 const yargs = require('yargs')
 const {app} = require('electron')
-const path = require('path')
-const fs = require('fs-plus')
 
 module.exports = function parseCommandLine (processArgs) {
   const options = yargs(processArgs).wrap(yargs.terminalWidth())
@@ -119,8 +117,6 @@ module.exports = function parseCommandLine (processArgs) {
   let pathsToOpen = []
   let urlsToOpen = []
   let devMode = args['dev']
-  let devResourcePath = process.env.ATOM_DEV_RESOURCE_PATH || path.join(app.getPath('home'), 'github', 'atom')
-  let resourcePath = null
 
   for (const path of args._) {
     if (path.startsWith('atom://')) {
@@ -130,21 +126,8 @@ module.exports = function parseCommandLine (processArgs) {
     }
   }
 
-  if (args['resource-path']) {
+  if (args.resourcePath || test) {
     devMode = true
-    devResourcePath = args['resource-path']
-  }
-
-  if (test) {
-    devMode = true
-  }
-
-  if (devMode) {
-    resourcePath = devResourcePath
-  }
-
-  if (!fs.statSyncNoException(resourcePath)) {
-    resourcePath = path.dirname(path.dirname(__dirname))
   }
 
   if (args['path-environment']) {
@@ -153,12 +136,7 @@ module.exports = function parseCommandLine (processArgs) {
     process.env.PATH = args['path-environment']
   }
 
-  resourcePath = normalizeDriveLetterName(resourcePath)
-  devResourcePath = normalizeDriveLetterName(devResourcePath)
-
   return {
-    resourcePath,
-    devResourcePath,
     pathsToOpen,
     urlsToOpen,
     executedFrom,
@@ -179,13 +157,5 @@ module.exports = function parseCommandLine (processArgs) {
     benchmark,
     benchmarkTest,
     env: process.env
-  }
-}
-
-function normalizeDriveLetterName (filePath) {
-  if (process.platform === 'win32') {
-    return filePath.replace(/^([a-z]):/, ([driveLetter]) => driveLetter.toUpperCase() + ':')
-  } else {
-    return filePath
   }
 }
